@@ -1,12 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
+const routesIndex = require('./routes/index');
 
 const app = express();
 
 app.use(bodyParser.json());
-require('./routes/index')(app);
-
+routesIndex(app);
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static('client/build'));
 
@@ -16,6 +16,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const PORT = process.env.PORT || 5000;
+// const REDIS_PORT = process.env.PORT || 6379;
+
 app.listen(PORT, () => {
-  console.log(`app running on port ${PORT}`);
+  console.log(`Purring like a kitten on port ${PORT}`);
 });
