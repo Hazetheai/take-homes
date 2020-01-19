@@ -1,38 +1,90 @@
 const axios = require('axios');
+const redis = require('redis');
 
-const baseUrl = 'https://swapi.co/api/';
+const client = redis.createClient(process.env.PORT || 6379);
+const baseUrl = 'https://swapi.co/api';
 
-module.exports = (app) => {
-  app.get('/api/people', (req, res) => {
-    axios
-      .get(`${baseUrl}people/`)
-      .then((data) => {
-        res.status(200).json(data.data);
-      })
-      .catch((error) => console.error(error));
+function cache(req, res, next) {
+  const people = 'people';
+  client.get(people, (err, data) => {
+    if (err) throw err;
+
+    if (data !== null) {
+      res.status(200).send(`<h1>${JSON.parse(data).results[0].name}</h2>`);
+    } else next();
   });
-  app.get('/api/planets', (req, res) => {
+}
+
+module.exports = async (app) => {
+  await app.get('/api/people', cache, (req, res) => {
     axios
-      .get(`${baseUrl}planets/`)
+      .get(`${baseUrl}/people`)
       .then((data) => {
-        res.status(200).json(data.data);
+        const people = data.data;
+        client.setex('people', 3600, JSON.stringify(people));
+
+        res.status(200).send(`<h1>${data.data.results[0].name}</h2>`);
       })
-      .catch((error) => console.error(error));
+      .catch((error) => {
+        res
+          .status(500)
+          .send(
+            `These are not the ${
+              res.path.split('/')[2]
+            }s you are looking for...`
+          );
+        console.error(error);
+      });
   });
-  app.get('/api/starships', (req, res) => {
+  await app.get('/api/planets', cache, (req, res) => {
     axios
-      .get(`${baseUrl}starships/`)
+      .get(`${baseUrl}/planets`)
       .then((data) => {
         res.status(200).json(data.data);
       })
-      .catch((error) => console.error(error));
+      .catch((error) => {
+        res
+          .status(500)
+          .send(
+            `These are not the ${
+              res.path.split('/')[2]
+            }s you are looking for...`
+          );
+        console.error(error);
+      });
   });
-  app.get('/api/people/:person', (req, res) => {
+  await app.get('/api/starships', cache, (req, res) => {
     axios
-      .get(`${baseUrl}${req.params.person}/`)
+      .get(`${baseUrl}/starships`)
       .then((data) => {
         res.status(200).json(data.data);
       })
-      .catch((error) => console.error(error));
+      .catch((error) => {
+        res
+          .status(500)
+          .send(
+            `These are not the ${
+              res.path.split('/')[2]
+            }s you are looking for...`
+          );
+        console.error(error);
+      });
+  });
+  await app.get('/people/:person', cache, (req, res) => {
+    axios
+      .get(`${baseUrl}/people/${req.params.person}/`)
+      .then((data) => {
+        res.status(200).json(data.data);
+      })
+      .catch((error) => {
+        res
+          .status(500)
+          .send(
+            `These are not the ${
+              res.path.split('/')[2]
+            }s you are looking for...`
+          );
+        console.error(error);
+      });
   });
 };
